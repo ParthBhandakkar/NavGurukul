@@ -941,16 +941,132 @@ a:hover { opacity: 0.7; }
 @media (max-width: 1024px) {
   .detail-body { grid-template-columns: 1fr; }
   .content-grid-2, .content-grid-3 { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
 @media (max-width: 768px) {
-  .mobile-menu-btn { display: flex; }
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
+  /* Hamburger button */
+  .mobile-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 14px; left: 14px;
+    z-index: 200;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    width: 36px; height: 36px;
+    align-items: center; justify-content: center;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Sidebar overlay */
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 150;
+    box-shadow: none;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 8px 0 24px rgba(0,0,0,0.1);
+  }
+
   .main-content { margin-left: 0; }
-  .page-header, .page-content { padding: var(--space-lg); }
-  .kanban-board { padding: var(--space-lg); }
-  .form-row { grid-template-columns: 1fr; }
-  .detail-header { flex-direction: column; text-align: center; }
-  .detail-actions { width: 100%; justify-content: center; }
+
+  /* Page header */
+  .page-header {
+    padding: var(--space-xl) var(--space-lg);
+    padding-left: 56px; /* space for hamburger */
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .page-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+  }
+  .page-header-actions .filter-pills { flex: 1; min-width: 0; }
+  .page-header-actions .search-box { flex: 1; min-width: 0; }
   .search-box input { width: 100%; }
+
+  /* Page content */
+  .page-content { padding: var(--space-lg); }
+
+  /* KPI grid - 2 columns on tablet */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
+  .kpi-card .kpi-value { font-size: 1.6rem; }
+
+  /* Charts */
+  .chart-container { height: 220px; }
+
+  /* Charts - type breakdown stacks */
+  .chart-card { padding: var(--space-lg) !important; }
+
+  /* Kanban */
+  .kanban-board {
+    padding: var(--space-lg);
+    gap: var(--space-md);
+  }
+  .kanban-column { min-width: 240px; }
+
+  /* Table: hide less-important columns */
+  .data-table th:nth-child(5),
+  .data-table td:nth-child(5),
+  .data-table th:nth-child(6),
+  .data-table td:nth-child(6) {
+    display: none;
+  }
+  .data-table th, .data-table td {
+    padding: var(--space-md) var(--space-sm);
+    font-size: 0.82rem;
+  }
+
+  /* Forms */
+  .form-row { grid-template-columns: 1fr; }
+
+  /* Detail page */
+  .detail-header {
+    flex-direction: column;
+    text-align: center;
+    padding: var(--space-xl) var(--space-lg);
+    padding-top: calc(var(--space-xl) + 40px);
+  }
+  .detail-actions { width: 100%; justify-content: center; }
+  .detail-body {
+    grid-template-columns: 1fr;
+    padding: var(--space-lg);
+  }
+
+  /* Filter pills scroll horizontally */
+  .filter-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .filter-pills::-webkit-scrollbar { display: none; }
+}
+
+@media (max-width: 480px) {
+  /* Tighter on small phones */
+  .page-header { padding: var(--space-lg) var(--space-md); padding-left: 50px; }
+  .page-content { padding: var(--space-md); }
+
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+  .kpi-card { padding: var(--space-lg) var(--space-md); }
+  .kpi-card .kpi-value { font-size: 1.4rem; }
+  .kpi-card .kpi-label { font-size: 0.65rem; }
+
+  /* Hide even more table columns on very small */
+  .data-table th:nth-child(4),
+  .data-table td:nth-child(4),
+  .data-table th:nth-child(7),
+  .data-table td:nth-child(7) {
+    display: none;
+  }
+
+  .kanban-column { min-width: 220px; }
+  .kanban-card { padding: var(--space-md); }
+
+  .login-card { padding: var(--space-2xl) var(--space-lg); }
 }

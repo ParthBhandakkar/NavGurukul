@@ -2,19 +2,28 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { demoStore } from '@/lib/demo-data';
+import { api } from '@/lib/api';
 import { getInitials } from '@/lib/utils';
 
 export default function ContactsPage() {
   const router = useRouter();
   const [contacts, setContacts] = useState([]);
   const [search, setSearch] = useState('');
+  const [partners, setPartners] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setContacts(demoStore.getContacts());
+    async function loadData() {
+      const [_contacts, _partners] = await Promise.all([
+        api.getContacts(),
+        api.getPartners()
+      ]);
+      setContacts(_contacts || []);
+      setPartners(_partners || []);
+      setLoading(false);
+    }
+    loadData();
   }, []);
-
-  const partners = demoStore.getPartners();
 
   let filtered = contacts;
   if (search) {
@@ -25,6 +34,8 @@ export default function ContactsPage() {
       c.designation?.toLowerCase().includes(q)
     );
   }
+
+  if (loading) return <div className="page-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: 'var(--text-muted)' }}>Loading...</div>;
 
   return (
     <>

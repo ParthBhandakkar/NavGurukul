@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { demoStore } from '@/lib/demo-data';
+import { api } from '@/lib/api';
 import { formatCurrency, formatDate, STAGE_LABELS, TYPE_LABELS, getTypeColor, getInitials } from '@/lib/utils';
 
 export default function PartnersPageWrapper() {
   return (
-    <Suspense fallback={<div style={{ padding: 32 }}>Loading...</div>}>
+    <Suspense fallback={<div className="page-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: 'var(--text-muted)' }}>Loading...</div>}>
       <PartnersPage />
     </Suspense>
   );
@@ -21,14 +21,19 @@ function PartnersPage() {
   const [filterType, setFilterType] = useState('all');
   const [filterStage, setFilterStage] = useState('all');
   const [sortBy, setSortBy] = useState('updated_at');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPartners(demoStore.getPartners());
     // Read URL params from dashboard clicks
     const typeParam = searchParams.get('type');
     const stageParam = searchParams.get('stage');
     if (typeParam) setFilterType(typeParam);
     if (stageParam) setFilterStage(stageParam);
+
+    api.getPartners().then(data => {
+      setPartners(data || []);
+      setLoading(false);
+    });
   }, [searchParams]);
 
   let filtered = [...partners];
@@ -48,11 +53,12 @@ function PartnersPage() {
     return new Date(b.updated_at) - new Date(a.updated_at);
   });
 
-  const handleDelete = (e, id) => {
+  const handleDelete = async (e, id) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this partner?')) {
-      demoStore.deletePartner(id);
-      setPartners(demoStore.getPartners());
+      await api.deletePartner(id);
+      const freshPartners = await api.getPartners();
+      setPartners(freshPartners || []);
     }
   };
 

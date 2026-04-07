@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { demoStore } from '@/lib/demo-data';
+import { api } from '@/lib/api';
 import { formatCurrency, formatRelativeDate, STAGE_LABELS, TYPE_LABELS, ACTIVITY_ICONS, getFollowupStatus } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const PIE_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706'];
 const STAGE_COLORS = ['#9ca3af', '#2563eb', '#7c3aed', '#d97706', '#059669', '#dc2626'];
@@ -16,23 +16,43 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [activities, setActivities] = useState([]);
   const [followups, setFollowups] = useState([]);
+  const [partners, setPartners] = useState([]);
 
   useEffect(() => {
-    setStats(demoStore.getStats());
-    setActivities(demoStore.getActivities().slice(0, 6));
-    setFollowups(demoStore.getFollowups().filter(f => !f.is_completed).slice(0, 5));
+    async function loadData() {
+      const [_stats, _activities, _followups, _partners] = await Promise.all([
+        api.getStats(),
+        api.getActivities(),
+        api.getFollowups(),
+        api.getPartners()
+      ]);
+      setStats(_stats);
+      setActivities(_activities.slice(0, 6));
+      setFollowups(_followups.filter(f => !f.is_completed).slice(0, 5));
+      setPartners(_partners);
+    }
+    loadData();
   }, []);
 
-  const toggleFollowup = (e, id) => {
+  const toggleFollowup = async (e, id) => {
     e.stopPropagation();
-    demoStore.toggleFollowup(id);
-    setFollowups(demoStore.getFollowups().filter(f => !f.is_completed).slice(0, 5));
-    setStats(demoStore.getStats());
+    const followup = followups.find(f => f.id === id);
+    if (!followup) return;
+    
+    // Optimistic update
+    setFollowups(followups.filter(f => f.id !== id));
+    
+    await api.toggleFollowup(id, followup.is_completed);
+    
+    const [_stats, _followups] = await Promise.all([
+      api.getStats(),
+      api.getFollowups()
+    ]);
+    setStats(_stats);
+    setFollowups(_followups.filter(f => !f.is_completed).slice(0, 5));
   };
 
-  if (!stats) return null;
-
-  const partners = demoStore.getPartners();
+  if (!stats) return <div className="page-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: 'var(--text-muted)' }}>Loading...</div>;
 
   const kpis = [
     { label: 'Total Partners', value: stats.totalPartners, subtext: 'Across all types', href: '/partners' },
@@ -53,12 +73,7 @@ export default function DashboardPage() {
     typeKey: t.type,
   }));
 
-  const handleBarClick = (data) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const stageKey = data.activePayload[0].payload.stageKey;
-      router.push(`/partners?stage=${stageKey}`);
-    }
-  };
+
 
   const handlePieClick = (data, index) => {
     const typeKey = TYPE_KEYS[index];
@@ -106,17 +121,13 @@ export default function DashboardPage() {
                 View Pipeline →
               </button>
             </div>
-            <div className="chart-container" style={{ cursor: 'pointer' }}>
+            <div className="chart-container">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stageData} barSize={28} onClick={handleBarClick}>
+                <BarChart data={stageData} barSize={28}>
                   <XAxis dataKey="name" tick={{ fill: '#888', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#888', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 6, color: '#111', fontSize: 13, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                    formatter={(value, name) => [value, 'Partners']}
-                  />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]} style={{ cursor: 'pointer' }}>
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} cursor="pointer"
+                    onClick={(data) => router.push(`/partners?stage=${data.stageKey}`)}>
                     {stageData.map((entry, index) => (
                       <Cell key={index} fill={STAGE_COLORS[index % STAGE_COLORS.length]} />
                     ))}

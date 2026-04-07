@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { demoStore } from '@/lib/demo-data';
+import { api } from '@/lib/api';
 
 export default function NewPartnerPage() {
   const router = useRouter();
@@ -19,26 +19,33 @@ export default function NewPartnerPage() {
 
   const update = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
     setSaving(true);
-    const partner = demoStore.createPartner({
+    const payload = {
       ...formData,
       pipeline_value: Number(formData.pipeline_value) || 0,
-      assigned_to: '1',
-    });
+      assigned_to: '11111111-1111-1111-1111-111111111111', 
+    };
+    if (formData.next_followup === '') delete payload.next_followup;
 
-    demoStore.createActivity({
-      partner_id: partner.id,
-      user_id: '1',
-      type: 'note',
-      title: 'Partner created',
-      description: `${formData.name} added as a new ${formData.type} partner.`,
-    });
+    const partner = await api.createPartner(payload);
 
-    setTimeout(() => router.push(`/partners/${partner.id}`), 300);
+    if (partner) {
+      await api.createActivity({
+        partner_id: partner.id,
+        user_id: '11111111-1111-1111-1111-111111111111',
+        type: 'note',
+        title: 'Partner created',
+        description: `${formData.name} added as a new ${formData.type} partner.`,
+      });
+      router.push(`/partners/${partner.id}`);
+    } else {
+      setSaving(false);
+      alert('Error creating partner');
+    }
   };
 
   return (

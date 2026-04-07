@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { demoStore } from '@/lib/demo-data';
+import { api } from '@/lib/api';
 import { formatCurrency, formatDate, formatRelativeDate, STAGE_LABELS, TYPE_LABELS, ACTIVITY_ICONS, getTypeColor, getInitials, getFollowupStatus } from '@/lib/utils';
 
 export default function PartnerDetailPage({ params }) {
@@ -17,6 +17,7 @@ export default function PartnerDetailPage({ params }) {
   const [showFollowupModal, setShowFollowupModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Activity form
   const [actType, setActType] = useState('note');
@@ -41,21 +42,30 @@ export default function PartnerDetailPage({ params }) {
     loadData();
   }, [id]);
 
-  const loadData = () => {
-    const p = demoStore.getPartner(id);
+  const loadData = async () => {
+    setLoading(true);
+    const p = await api.getPartner(id);
     if (!p) { router.push('/partners'); return; }
+    
+    const [_contacts, _activities, _followups] = await Promise.all([
+      api.getContactsByPartner(id),
+      api.getActivitiesByPartner(id),
+      api.getFollowupsByPartner(id),
+    ]);
+
     setPartner(p);
-    setContacts(demoStore.getContactsByPartner(id));
-    setActivities(demoStore.getActivitiesByPartner(id));
-    setFollowups(demoStore.getFollowupsByPartner(id));
+    setContacts(_contacts || []);
+    setActivities(_activities || []);
+    setFollowups(_followups || []);
     setEditData({ ...p });
+    setLoading(false);
   };
 
-  const addActivity = () => {
+  const addActivity = async () => {
     if (!actTitle.trim()) return;
-    demoStore.createActivity({
+    await api.createActivity({
       partner_id: id,
-      user_id: '1',
+      user_id: '11111111-1111-1111-1111-111111111111',
       type: actType,
       title: actTitle,
       description: actDesc,
@@ -65,24 +75,24 @@ export default function PartnerDetailPage({ params }) {
     loadData();
   };
 
-  const addFollowup = () => {
+  const addFollowup = async () => {
     if (!fuTitle.trim() || !fuDate) return;
-    demoStore.createFollowup({
+    await api.createFollowup({
       partner_id: id,
-      user_id: '1',
+      user_id: '11111111-1111-1111-1111-111111111111',
       title: fuTitle,
       due_date: fuDate,
       description: fuDesc,
     });
-    demoStore.updatePartner(id, { next_followup: fuDate });
+    await api.updatePartner(id, { next_followup: fuDate });
     setFuTitle(''); setFuDate(''); setFuDesc('');
     setShowFollowupModal(false);
     loadData();
   };
 
-  const addContact = () => {
+  const addContact = async () => {
     if (!ctName.trim()) return;
-    demoStore.createContact({
+    await api.createContact({
       partner_id: id,
       name: ctName,
       email: ctEmail,
@@ -95,22 +105,24 @@ export default function PartnerDetailPage({ params }) {
     loadData();
   };
 
-  const saveEdit = () => {
-    demoStore.updatePartner(id, editData);
+  const saveEdit = async () => {
+    await api.updatePartner(id, editData);
     setShowEditModal(false);
     loadData();
   };
 
-  const toggleFollowup = (fuId) => {
-    demoStore.toggleFollowup(fuId);
+  const toggleFollowup = async (fuId) => {
+    const followup = followups.find(f => f.id === fuId);
+    if (!followup) return;
+    await api.toggleFollowup(fuId, followup.is_completed);
     loadData();
   };
 
-  const changeStage = (newStage) => {
-    demoStore.updatePartner(id, { stage: newStage });
-    demoStore.createActivity({
+  const changeStage = async (newStage) => {
+    await api.updatePartner(id, { stage: newStage });
+    await api.createActivity({
       partner_id: id,
-      user_id: '1',
+      user_id: '11111111-1111-1111-1111-111111111111',
       type: 'stage_change',
       title: `Moved to ${STAGE_LABELS[newStage]}`,
       description: `Partnership stage changed to ${STAGE_LABELS[newStage]}.`,
@@ -118,7 +130,7 @@ export default function PartnerDetailPage({ params }) {
     loadData();
   };
 
-  if (!partner) return null;
+  if (loading || !partner) return <div className="page-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: 'var(--text-muted)' }}>Loading...</div>;
 
   return (
     <>

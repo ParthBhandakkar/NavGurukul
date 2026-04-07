@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { demoStore } from '@/lib/demo-data';
+import { api } from '@/lib/api';
 import { formatCurrency, STAGE_LABELS, getFollowupStatus, getTypeColor } from '@/lib/utils';
 
 const STAGES = ['lead', 'contacted', 'in_discussion', 'proposal_sent', 'active_partner', 'closed'];
@@ -21,9 +21,13 @@ export default function PipelinePage() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
   const [filterType, setFilterType] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPartners(demoStore.getPartners());
+    api.getPartners().then(data => {
+      setPartners(data || []);
+      setLoading(false);
+    });
   }, []);
 
   const filteredPartners = filterType === 'all'
@@ -45,19 +49,25 @@ export default function PipelinePage() {
     setDragOverStage(null);
   };
 
-  const handleDrop = (e, newStage) => {
+  const handleDrop = async (e, newStage) => {
     e.preventDefault();
     setDragOverStage(null);
     if (draggedId) {
-      demoStore.updatePartner(draggedId, { stage: newStage });
-      demoStore.createActivity({
+      // Optimistic update
+      setPartners(prev => prev.map(p => p.id === draggedId ? { ...p, stage: newStage } : p));
+      
+      await api.updatePartner(draggedId, { stage: newStage });
+      await api.createActivity({
         partner_id: draggedId,
-        user_id: '1',
+        user_id: '11111111-1111-1111-1111-111111111111', // Dummy admin ID from seed.sql
         type: 'stage_change',
         title: `Moved to ${STAGE_LABELS[newStage]}`,
         description: `Partnership stage changed to ${STAGE_LABELS[newStage]}.`,
       });
-      setPartners(demoStore.getPartners());
+      
+      // Refresh to ensure sync
+      const freshPartners = await api.getPartners();
+      setPartners(freshPartners || []);
     }
     setDraggedId(null);
   };
@@ -66,6 +76,8 @@ export default function PipelinePage() {
     setDraggedId(null);
     setDragOverStage(null);
   };
+
+  if (loading) return <div className="page-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: 'var(--text-muted)' }}>Loading...</div>;
 
   return (
     <>
